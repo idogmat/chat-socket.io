@@ -1,41 +1,29 @@
 import {ChangeEvent, KeyboardEvent, useEffect, useRef, useState} from "react";
 import './App.css'
-import {io} from 'socket.io-client'
-import {createStore} from "redux";
+import {createConnection, IUser, sendMessage, setClientName} from "./chat-reducer";
+import {useAppDispatch, useAppSelector} from "./store";
 
-interface IUser{
-  userId: string
-  userName: string
-  message: string
-  photo: string
-}
-// const store = createStore()
-const socket = io('http://localhost:3010',{ transports : ['websocket'] })
 function App() {
+  const dispatch = useAppDispatch()
+  const messages = useAppSelector(state=>state.chat.messages)
   const [message, setMessage] = useState('')
-  const [users, setUsers] = useState<IUser[]>([])
   const [name, setName] = useState('Jack')
   const [isAutoScrollActive, setAutoScrollActive] = useState(false)
 
   const ref = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-  socket.on('init-messages-published',(users)=>{
-    setUsers(users)
-  })
-    socket.on('new-message-sent',(message)=>{
-      setUsers(state=>[...state,message])
-  })
+    dispatch(createConnection())
   }, [])
   useEffect(()=>{
     if(isAutoScrollActive) ref.current?.scrollIntoView({behavior:'smooth'})
-  },[users])
+  },[messages])
   const send = () => {
-    socket.emit('client-message-sent',message)
+    dispatch(sendMessage(message))
     setMessage('')
     setAutoScrollActive(true)
   }
   const setNameOnWS = () => {
-    socket.emit('client-name-sent',name)
+    dispatch(setClientName(name))
 
   }
   const onMessageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +40,7 @@ function App() {
       <div className="chat-container">
         <div className="chat" onScroll={()=>setAutoScrollActive(false)}>
           <div  className="messages">
-            {users.map((u,i) => {
+            {messages.map((u:IUser,i:number) => {
               return <div className={'message'} key={i}>
                 <img src={u.photo} alt={"*"}/>
                 <b>{u.userName}</b> <span>{u.message}</span>
